@@ -1,48 +1,92 @@
-@extends('auth.layouts')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tambah Siswa</title>
+  <link href="{{ asset('css/create.css') }}" rel="stylesheet">
+  
+</head>
 
-@section('content')
-<h1>Register</h1>
-<a href="{{ route('login') }}">Login</a>
-<br><br>
-<form action="{{ route('store') }}" method="POST">
+<body>
+  <div class="form-container">
+    <h1>Tambah Siswa</h1>
+    <a href="{{ route('siswa.index') }}" class="back-button">Kembali</a>
 
-  @csrf
-  <label>Nama Lengkap</label><br>
-  <input type="text" id="name" name="name" value="{{ old('name') }}"><br>
+    <!-- Error Alert -->
+    @if ($errors->any())
+    <div class="alert">
+      <ul>
+        @foreach ($errors->all() as $error)
+        <li>{{ $error }}</li>
+        @endforeach
+      </ul>
+    </div>
+    @endif
 
-  @if ($errors->has('name'))
-  <span class="text-danger">{{ $errors->first('name') }} </span>
-  @endif
+    <!-- Form Tambah Siswa -->
+    <form action="{{ route('siswa.store')}}" method="POST" enctype="multipart/form-data">
+      @csrf
 
-  <br>
-  <label>Email Address</label><br>
-  <input type="email" id="email" name="email" value="{{ old('email') }}"><br>
+      <h2>Akun Siswa</h2>
+      <label>Nama Lengkap</label>
+      <input type="text" id="name" name="name" value="{{ old('name') }}" placeholder="Masukkan nama lengkap">
 
-  @if ($errors->has('email'))
-  <span class="text-danger">{{ $errors->first('email') }}</span>
-  @endif
+      <label>Email Address</label>
+      <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="Masukkan email">
 
-  <br>
-  <label>Password</label><br>
-  <input type="password" id="password" name="password"><br>
+      <label>Password</label>
+      <input type="password" id="password" name="password" placeholder="Masukkan password">
 
-  @if ($errors->has('password'))
-  <span class="text-danger">{{ $errors->first ('password') }}</span>
-  @endif
+      <label>Confirm Password</label>
+      <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Konfirmasi password">
 
-  <br>
-  <label for="password_confirmation" class="col-md-4 col-form-label text-mr-end text-start">Confirm Password</label>
-  <div class="col-md-6">
-    <input type="password" class="form-control" id="password_confirmation" name="password_confirmation"> 
-  </div><br>
-  <input type="submit" value="Register">
-</form>
-@endsection
+      <h2>Data Siswa</h2>
+      <label>Foto Siswa</label>
+      <input type="file" name="image" accept="image/*" required>
 
+      <label>NIS Siswa</label>
+      <input type="text" name="nis" value="{{ old('nis') }}" placeholder="Masukkan NIS" required>
 
+      <label>Tingkatan</label>
+      <select name="tingkatan" required>
+        <option value="">Pilih Tingkatan</option>
+        <option value="X">X</option>
+        <option value="XI">XI</option>
+        <option value="XII">XII</option>
+      </select>
 
+      <label>Jurusan</label>
+      <select name="jurusan" required>
+        <option value="">Pilih Jurusan</option>
+        <option value="TBSM">TBSM</option>
+        <option value="TJKT">TJKT</option>
+        <option value="PPLG">PPLG</option>
+        <option value="DKV">DKV</option>
+        <option value="TOI">TOI</option>
+      </select>
 
+      <label>Kelas</label>
+      <select name="kelas" required>
+        <option value="">Pilih Kelas</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
 
+      <label>No Hp</label>
+      <input type="text" name="hp" value="{{ old('hp') }}" placeholder="Masukkan nomor HP" required>
+
+      <!-- Button Container -->
+      <div class="btn-container">
+        <button type="submit">SIMPAN DATA</button>
+        <button type="reset">RESET FORM</button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
 
 
 

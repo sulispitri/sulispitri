@@ -14,6 +14,7 @@ class LoginRegisterController extends Controller
     {
         return view('auth.register');
     }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -28,20 +29,19 @@ class LoginRegisterController extends Controller
             'password' => Hash::make($request->password),
             'usertype' => 'admin'
         ]);
+
         $credentials = $request->only('email', 'password');
         Auth::attempt($credentials);
         $request->session()->regenerate();
 
         if ($request->user()->usertype == 'admin') {
-            return redirect('admin/dashboard')->withSuccess('You have successfully registered & logged in!');
+            return redirect('admin/dashboard')->withSuccess('You have succsessfully registrred & logged in! ');
         }
-
-        return redirect()->intended(route('dashboard'));
     }
 
-    public function login()
+    public function login ()
     {
-       return view ('auth.login');
+        return view('auth.login');
     }
 
     public function authenticate(Request $request)
@@ -51,24 +51,25 @@ class LoginRegisterController extends Controller
             'password' => 'required'
         ]);
 
-    if (Auth::attempt($credentials)) {
-        $request->session()->regenerate();
-        if ($request->user()->usertype == 'admin') {
-            return redirect('admin/dashboard')->withSuccess('You have succesfukky logged in!');
+        if(Auth::attempt($credentials)) {
+            $request->session()->regenerate();
+            if ($request->user()->usertype == 'admin') {
+                return redirect('admin/dashboard')->withSuccess('You have succsessfully logged in!');
+            }
         }
-    }
 
-    return back()->withError([
-        'email' => 'Your provided credentials do not match in pur records.',
-    ])->onlyinput('email');
+        return back()->withErrors([
+            'email' => 'Your provided credentials do not macth in our records.',
+        ])->onlyinput('email');
     }
 
     public function logout(Request $request)
-    {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        return redirect()->route('login')
-             ->withSuccess('You have logged out successfully!');;
-    }
+{
+    Auth::logout();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()->route('login')->with('success', 'You have logged out successfully!');
+}
+
 }
