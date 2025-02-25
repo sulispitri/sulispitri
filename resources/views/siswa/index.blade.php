@@ -6,6 +6,7 @@
     <title>Data Siswa</title>
     <link href="{{ asset('css/index.css') }}" rel="stylesheet">
 </head>
+
 <body>
     <div class="container">
         <h1>Data Siswa</h1>
@@ -74,7 +75,12 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8">Data tidak ditemukan</td>
+                    <td>
+                        <p>Data tidak ditemukan</p>
+                        </td>
+                        <td>
+                            <a href="{{ route('siswa.index') }}">Kembali</a>
+                        </td>
                 </tr>
                 @endforelse
             </tbody>

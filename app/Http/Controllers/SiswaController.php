@@ -7,30 +7,25 @@ use App\Models\User;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 
 class SiswaController extends Controller
 {
     public function index(): View
+    
     {
-        // Get data dari database
+        // Ambil data dari database
         $siswas = DB::table('siswas')
             ->join('users', 'siswas.id_user', '=', 'users.id')
-            ->select(
-                'siswas.*',
-                'users.name',
-                'users.email',
-                'siswas.hp' // Menambahkan nomor HP
-            );
+            ->select('siswas.*', 'users.name', 'users.email')
+            ->paginate(10);
 
-        // Tambahkan pencarian jika ada input cari
         if (request('cari')) {
-            $siswas = $this->search(request('cari')); // Perbaiki assignment operator
-        } else {
-            $siswas = $siswas->paginate(10); // Tambahkan pagination di sini
+            $siswas = $this->search(request('cari'));
         }
 
         return view('admin.siswa.index', compact('siswas'));
@@ -43,8 +38,8 @@ class SiswaController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        // Validate the request
-        $validated = $request->validate([
+        // Validasi input formulir
+        $request->validate([
             'name' => 'required|string|max:250',
             'email' => 'required|email|max:250|unique:users',
             'password' => 'required|min:8|confirmed',
@@ -53,58 +48,52 @@ class SiswaController extends Controller
             'tingkatan' => 'required',
             'jurusan' => 'required',
             'kelas' => 'required',
-            'hp' => 'required|numeric', // Memperbaiki validasi nomor HP
+            'hp' => 'required|numeric'
         ]);
 
-        // Upload the image
+        // Unggah gambar
         $image = $request->file('image');
-        // Simpan ke public storage
-        $imagePath = $image->storeAs('siswas', $image->hashName(), 'public'); // Menyimpan ke 'storage/app/public/siswas'
+        $imagePath = $image->storeAs('siswas', $image->hashName(), 'public');
 
-        // Insert account details
+        // Insert akun pengguna
         $id_akun = $this->insertAccount($request->name, $request->email, $request->password);
 
-        // Create siswa
+        // Buat catatan Siswa baru
         Siswa::create([
             'id_user' => $id_akun,
-            'image' => $image->hashName(), // Hanya menyimpan nama file untuk database
+            'image' => $image->hashName(),
             'nis' => $request->nis,
             'tingkatan' => $request->tingkatan,
             'jurusan' => $request->jurusan,
             'kelas' => $request->kelas,
-            'hp' => $request->hp, // Menyimpan nomor HP
-            'status' => 1 // Status bisa disesuaikan dengan kebutuhan
+            'hp' => $request->hp,
+            'status' => 1
         ]);
 
-        // Redirect to index
+        // Redirect ke indeks dengan pesan sukses
         return redirect()->route('siswa.index')->with(['success' => 'Data Berhasil Disimpan!']);
     }
 
-    // Function to insert account into users table
-    public function insertAccount(string $name, string $email, string $password)
+    public function insertAccount(string $nama, string $email, string $password)
     {
         User::create([
-            'name' => $name,
+            'name' => $nama,
             'email' => $email,
             'password' => Hash::make($password),
-            'usertype' => 'siswa'
+            'usertype' => 'siswa',
         ]);
 
-        // Get the id of the newly created user
+        // Mengambil ID pengguna berdasarkan email
         $id = DB::table('users')->where('email', $email)->value('id');
         return $id;
     }
 
     public function show(string $id): View
     {
-        // Get data from the database
+        // Ambil data Siswa dari database
         $siswa = DB::table('siswas')
             ->join('users', 'siswas.id_user', '=', 'users.id')
-            ->select(
-                'siswas.*',
-                'users.name',
-                'users.email'
-            )
+            ->select('siswas.*', 'users.name', 'users.email')
             ->where('siswas.id', $id)
             ->first();
 
@@ -115,99 +104,112 @@ class SiswaController extends Controller
     {
         return DB::table('siswas')
             ->join('users', 'siswas.id_user', '=', 'users.id')
-            ->select(
-                'siswas.*',
-                'users.name',
-                'users.email'
-            )
+            ->select('siswas.*', 'users.name', 'users.email')
             ->where('users.name', 'like', '%' . $cari . '%')
             ->orWhere('siswas.nis', 'like', '%' . $cari . '%')
             ->orWhere('users.email', 'like', '%' . $cari . '%')
             ->paginate(10);
     }
-    public function edit(string $id): View
-    {
-        // Get data from the database
-        $siswa = DB::table('siswas')
-            ->join('users', 'siswas.id_user', '=', 'users.id')
-            ->select(
-                'siswas.*',
-                'users.name',
-                'users.email'
-            )
-            ->where('siswas.id', $id)
-            ->first();
 
+    public function edit($id): View
+    {
+        // Ambil data siswa yang akan diedit
+        $siswa = Siswa::findOrFail($id);
         return view('admin.siswa.edit', compact('siswa'));
     }
+
     public function update(Request $request, $id): RedirectResponse
-{
-    // calidate form
-    $validated = $request->validate([
-        'name' => 'required|string|max:250',
-        'image' => 'image|mimes:jpeg,png,jpg|max:2048',
-        'nis' => 'required|numeric',
-        'tingkatan' => 'required',
-        'jurusan' => 'required',
-        'kelas' => 'required',
-        'hp' => 'required|numeric',
-        'status' => 'required'
-    ]);
-
-    $datas = Siswa::findOrFail($id);
-    $this->editAccount($request->name,$id);
-
-    if ($request->hasFile('image')) {
-        $image =$request->file('image');
-        $image->storeAs('public/siswas',$image->hashName());
-        Storage::delete('public/siswas/'. $datas->image);
-
-        $datas->update([
-        'image' => $image->hashName(),
-        'nis' => $request->nis,
-        'tingkatan' => $request->tingkatan,
-        'jurusan' => $request->jurusan,
-        'kelas' => $request->kelas,
-        'hp' => $request->hp,
-        'status' => $request->status
+    {
+        // Validasi input formulir
+        $request->validate([
+            'name' => 'required|string|max:250',
+            'email' => 'required|email|max:250|unique:users',
+            'password' => 'nullable|min:8|confirmed',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'nis' => 'required|numeric',
+            'tingkatan' => 'required',
+            'jurusan' => 'required',
+            'kelas' => 'required',
+            'hp' => 'required|numeric'
         ]);
-    } else{
-        $datas->update([
-        'nis' => $request->nis,
-        'tingkatan' => $request->tingkatan,
-        'jurusan' => $request->jurusan,
-        'kelas' => $request->kelas,
-        'hp' => $request->hp,
-        'status' => $request->status
+
+        // Dapatkan data siswa
+        $siswa = Siswa::findOrFail($id);
+
+        // Update akun pengguna
+        $this->editAccount($request->name, $id);
+
+        // Periksa apakah gambar baru diunggah
+        if ($request->hasFile('image')) {
+            // Unggah gambar baru
+            $image = $request->file('image');
+            $imagePath = $image->storeAs('public/siswa', $image->hashName());
+
+            // Hapus gambar lama
+            Storage::delete('public/siswa/' . $siswa->image);
+
+            // Update data siswa dengan gambar baru
+            $siswa->update([
+                'image' => $image->hashName(),
+                'nis' => $request->nis,
+                'tingkatan' => $request->tingkatan,
+                'jurusan' => $request->jurusan,
+                'kelas' => $request->kelas,
+                'hp' => $request->hp,
+                'status' => $request->status
+            ]);
+        } else {
+            // Update tanpa mengganti gambar
+            $siswa->update([
+                'nis' => $request->nis,
+                'tingkatan' => $request->tingkatan,
+                'jurusan' => $request->jurusan,
+                'kelas' => $request->kelas,
+                'hp' => $request->hp,
+                'status' => $request->status
+            ]);
+        }
+
+        // Redirect ke indeks dengan pesan sukses
+        return redirect()->route('siswa.index')->with(['success' => 'Data Berhasil Diubah']);
+    }
+
+    public function editAccount(string $name, string $id)
+    {
+        // Dapatkan ID pengguna
+        $siswa = DB::table('siswas')->where('id', $id)->value('id_user');
+        $user = User::findOrFail($siswa);
+
+        // Jika ada perubahan nama
+        $user->update([
+            'name' => $name
         ]);
     }
-    return redirect()->route('siswa.index')->with(['success' => 'Data Berhasil Diubah!']);
-}
-public function editAccount(string $name, string $id)
-{
-    $siswa = DB::table('siswas')->where('id',$id)->value('id_user');
-    $user = User::findOrFail($siswa);
+    //Hapus data
+    public function destroy($id): RedirectResponse
+    {
+        //delete pelanggar
+        $this->destroy($id);
 
-    $user->update([
-        'name' => $name
-    ]);
-}
-public function destroy($id): RedirectResponse
-{
-    $this->destroyUser($id);
+        //get post bt ID
+        $post = Siswa::findOrfail($id);
 
-    $post = Siswa::findOrFail($id);
+        //delete image
+        Storage::delete('public/siswas/'. $post->image);
 
-    Storage::delete('public/siswas/' . $post->image);
+        //delete post
+        $post->delete();
 
-    $post->delete();
-    return redirect()->route('siswa.index')->with(['success' => 'Data Berhasil Dihapus!']);
-}
-public function destroyUser(string $id)
-{
-    $siswa = DB::table('siswas')->where('id',$id)->value('id_user');
-    $user = User::findOrFail($siswa);
+        //redirect to index
+        return redirect()->route('siswa.index')->with(['succes' => 'Data Berhasil Dihapus']);
+    }
+    public function destroyUser(string $id)
+    {
+        //get id user
+        $siswa =DB::table('siswas')->where('id',$id);
+        $user = User::findOrfail($siswa);
 
-    $user->delete();
-}
+        //delete post
+        $user->delete();
+    }
 }
